@@ -1,23 +1,25 @@
+"use client";
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { BookText } from "lucide-react"
 
+import React, { useState } from "react";
 
 const categories = [
-  { label: "Tất cả các câu hỏi", href: "#" },
-  { label: "Học vụ - Thủ tục", href: "#" },
-  { label: "Học tập - Môn học", href: "#" },
-  { label: "CĐTN / KLTN", href: "#" },
-  { label: "Học phí", href: "#" },
-  { label: "Hoạt động - CLB", href: "#" },
-  { label: "Khác", href: "#" },
+  { label: "Tất cả các câu hỏi", categoryID: 0, href: "#" },
+  { label: "Học vụ - Thủ tục", categoryID: 1, href: "#" },
+  { label: "Học tập - Môn học", categoryID: 2, href: "#" },
+  { label: "CĐTN / KLTN", categoryID: 3, href: "#" },
+  { label: "Học phí", categoryID: 4, href: "#" },
+  { label: "Hoạt động - CLB", categoryID: 5, href: "#" },
+  { label: "Khác", categoryID: 6, href: "#" },
 ]
 
 const questions = [
-  {label: "Học vụ - Thủ tục | A46369 | Lớp TE35CL02 | 29/10/2025", href:'#'},
-  {label: "CĐTN / KLTN | A45333 | Lớp TT34CL01 | 27/10/2025", href:'#'},
-  {label: "Học phí | A43779 | Lớp TI34CL03 | 25/10/2025", href:'#'},
-  {label: "Học phí | A43779 | Lớp TI34CL04 | 25/10/2025", href:'#'},
+  {title: "Học vụ - Thủ tục | A46369 | Lớp TE35CL02 | 29/10/2025", topicID: 1, Status: false, href:'#'},
+  {title: "CĐTN / KLTN | A45333 | Lớp TT34CL01 | 27/10/2025", topicID: 2, Status: false, href:'#'},
+  {title: "Học phí | A43779 | Lớp TI34CL03 | 25/10/2025", topicID: 3, Status: false, href:'#'},
+  {title: "Học phí | A43779 | Lớp TI34CL04 | 25/10/2025", topicID: 4, Status: false, href:'#'},
 ]
 
 const advisors = [
@@ -40,6 +42,10 @@ const students = [
 ]
 
 export default function Home() {
+  const [selectedCategory, setSelectedCategory] = useState(0);
+
+
+
   return (
     <div className="h-[100vh] w-full flex justify-start items-center flex-col bg-[#ededed]">
       <div className="w-full flex justify-center items-center gap-2 flex-col p-5 bg-(--main-blue) text-white text-center">
@@ -59,6 +65,7 @@ export default function Home() {
                 <a
                   key={category.label}
                   href={category.href}
+                  onClick={()=>{setSelectedCategory(category.categoryID)}}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
                 >
                   <BookText className="hidden sm:flex"/>
@@ -73,16 +80,23 @@ export default function Home() {
               <Button variant="outline" className="bg-(--main-lightRed) text-white hover:bg-(--main-lightRed) hover:text-white">Chọn lớp</Button>
               <Button variant="outline">Trạng thái câu hỏi</Button>
           </div>
-          {questions.map((question) => {
-            return (
-              <Card className="p-2 w-full hover:bg-muted gap-3" key={question.label}>
-                <a href={question.href}>{question.label}</a>
-                <div className="flex justify-end">
-                  <Button variant="secondary" className="w-[20%] bg-(--main-lightRed) text-white hover:bg-white hover:text-black hover:border-1 hover:border-black cursor-pointer">Trả lời</Button>
-                </div>
-              </Card>
-            )
-          })}
+          {questions
+            .filter((q) => selectedCategory === 0 || q.topicID === selectedCategory)
+            .map((question) => {
+              return (
+                <Card className="p-2 w-full hover:bg-muted gap-3" key={question.title}>
+                  <a href={question.href}>{question.title}</a>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="secondary"
+                      className="w-[20%] bg-(--main-lightRed) text-white border-[3px] border-transparent box-border hover:bg-white hover:text-black hover:border-black"
+                    >
+                      Trả lời
+                    </Button>
+                  </div>
+                </Card>
+              )
+            })}
         </div>
         <div className="hidden lg:flex justify-center items-center flex-col gap-2">
           <Card className="p-2 gap-3 w-full">

@@ -42,9 +42,9 @@ export default function FieldDemo() {
   };
   return (
     <div className="py-15 w-full flex justify-center items-center bg-[#ededed]">
-      <div className="w-1/3 py-10 rounded-lg flex justify-center items-center m-10 flex-col bg-white">
+      <div className="w-4/5 lg:w-1/3 py-10 rounded-lg flex justify-center items-center m-10 flex-col bg-white">
         <span className="font-bold text-lg">ĐẶT CÂU HỎI</span>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md p-5">
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <FieldSet>
