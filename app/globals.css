@@ -78,6 +78,7 @@
   --sidebar-ring: oklch(0.708 0 0);
   
   --main-blue: rgb(0,10,61);
+  --main-blueHover: rgb(3, 27, 145);
   --main-lightRed: rgb(217,30,30); 
   --main-darkRed: rgb(139,0,0);
 

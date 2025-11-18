@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,11 +15,50 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async (e: React.FormEvent) =>{
+    e.preventDefault();
+    setLoading(true)
+    setError(null)
+
+    try{
+      const res = await fetch('/api/auth/login',{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include', // include cookies from server
+        body: JSON.stringify({ email, password })
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data?.message || 'Đăng nhập thất bại')
+        setLoading(false)
+        return
+      }
+
+      // success — server should set a session cookie; redirect to home
+      setLoading(false)
+      router.push('/')
+    }catch(error){
+      console.error(error)
+      setError('Lỗi khi liên hệ server')
+      setLoading(false)
+    }
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -28,7 +69,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={submit}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -36,6 +77,7 @@ export function LoginForm({
                   id="email"
                   type="email"
                   placeholder="m@example.com"
+                  onChange={e => setEmail(e.target.value)}
                   required
                 />
               </Field>
@@ -49,14 +91,24 @@ export function LoginForm({
                     Quên mật khẩu?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
               </Field>
               <Field>
-                <Button type="submit">Đăng nhập</Button>
-                <Button variant="outline" type="button">
+                <Button type="submit" disabled={loading} className="bg-(--main-lightRed) border-[1px] border-transparent hover:bg-white hover:text-black hover:border-black cursor-pointer">
+                  {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                </Button>
+                <Button variant="outline" type="button" className="cursor-pointer">
                   Đăng nhập với Google
                 </Button>
               </Field>
+              {error && (
+                <div role="alert" className="text-sm text-red-600">{error}</div>
+              )}
             </FieldGroup>
           </form>
         </CardContent>

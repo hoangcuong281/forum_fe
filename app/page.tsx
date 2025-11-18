@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { BookText } from "lucide-react"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const categories = [
   { label: "Tất cả các câu hỏi", categoryID: 0, href: "#" },
@@ -44,8 +44,11 @@ const students = [
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState(0);
 
-
-
+  useEffect(() => {
+    // ensure default selection is applied on mount
+    setSelectedCategory(0);
+  }, []);
+  
   return (
     <div className="h-[100vh] w-full flex justify-start items-center flex-col bg-[#ededed]">
       <div className="w-full flex justify-center items-center gap-2 flex-col p-5 bg-(--main-blue) text-white text-center">
@@ -65,11 +68,12 @@ export default function Home() {
                 <a
                   key={category.label}
                   href={category.href}
-                  onClick={()=>{setSelectedCategory(category.categoryID)}}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
+                  onClick={(e) => { e.preventDefault(); setSelectedCategory(category.categoryID); }}
+                  aria-current={selectedCategory === category.categoryID ? 'page' : undefined}
+                  className={`flex p-3 gap-2 ${selectedCategory === category.categoryID ? 'bg-(--main-blueHover) text-white': 'hover:bg-muted transition-colors'}`}
                 >
                   <BookText className="hidden sm:flex"/>
-                  <span className="text-sm font-medium text-foreground">{category.label}</span>
+                  <span className="text-sm font-medium">{category.label}</span>
                 </a>
               )
             })}
@@ -89,7 +93,7 @@ export default function Home() {
                   <div className="flex justify-end">
                     <Button
                       variant="secondary"
-                      className="w-[20%] bg-(--main-lightRed) text-white border-[3px] border-transparent box-border hover:bg-white hover:text-black hover:border-black"
+                      className="w-[20%] bg-(--main-lightRed) text-white border-[1px] border-transparent box-border hover:bg-white hover:text-black hover:border-black cursor-pointer"
                     >
                       Trả lời
                     </Button>
