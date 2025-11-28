@@ -22,7 +22,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [email, setEmail] = useState('');
+  const [msv, setMSV] = useState('');
   const [password, setPassword] = useState('');
 
   const router = useRouter()
@@ -39,7 +39,7 @@ export function LoginForm({
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'include', // include cookies from server
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ msv, password })
       })
 
       if (!res.ok) {
@@ -65,19 +65,19 @@ export function LoginForm({
         <CardHeader>
           <CardTitle>Đăng nhập vào tài khoản của bạn</CardTitle>
           <CardDescription>
-            Nhập Email để đăng nhập vào tài khoản của bạn
+            Nhập Mã sinh viên để đăng nhập vào tài khoản của bạn
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="msv">Mã sinh viên</FieldLabel>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  onChange={e => setEmail(e.target.value)}
+                  id="msv"
+                  type="msv"
+                  placeholder="A12345"
+                  onChange={e => setMSV(e.target.value)}
                   required
                 />
               </Field>
