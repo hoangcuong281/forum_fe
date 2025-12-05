@@ -1,7 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { BookText } from "lucide-react"
 
 import React, { useState, useEffect } from "react";
 
@@ -72,7 +71,6 @@ export default function Home() {
                   aria-current={selectedCategory === category.categoryID ? 'page' : undefined}
                   className={`flex p-3 gap-2 ${selectedCategory === category.categoryID ? 'bg-(--main-blueHover) text-white': 'hover:bg-muted transition-colors'}`}
                 >
-                  <BookText className="hidden sm:flex"/>
                   <span className="text-sm font-medium">{category.label}</span>
                 </a>
               )
@@ -105,7 +103,6 @@ export default function Home() {
         <div className="hidden lg:flex justify-center items-center flex-col gap-2">
           <Card className="p-2 gap-3 w-full">
             <div className="flex flex-row gap-2 border-b pt-2 pb-2">
-              <BookText/>
               <span className="text-sm font-medium text-foreground">Danh sách cố vấn học tập</span>
             </div>
             {advisors.map((advisor)=>{
@@ -117,7 +114,6 @@ export default function Home() {
           </Card>
           <Card className="p-2 gap-3 w-full">
             <div className="flex flex-row gap-2 border-b pt-2 pb-2">
-              <BookText/>
               <span className="text-sm font-medium text-foreground">Bảng tin khoa CNTT</span>
             </div>
             {news.map((newItem)=>{
@@ -129,7 +125,6 @@ export default function Home() {
           </Card>
           <Card className="p-2 gap-3 w-full">
             <div className="flex flex-row gap-2 border-b pt-2 pb-2">
-              <BookText/>
               <span className="text-sm font-medium text-foreground">Sinh viên tích cực</span>
             </div>
             {students.map((student)=>{

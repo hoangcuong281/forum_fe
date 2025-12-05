@@ -23,7 +23,8 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const [msv, setMSV] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('emilys');
+  const [password, setPassword] = useState('emilyspass');
 
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -35,11 +36,11 @@ export function LoginForm({
     setError(null)
 
     try{
-      const res = await fetch('/api/auth/login',{
+      const res = await fetch('https://dummyjson.com/auth/login',{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'include', // include cookies from server
-        body: JSON.stringify({ msv, password })
+        body: JSON.stringify({ username, password })
       })
 
       if (!res.ok) {
@@ -94,7 +95,6 @@ export function LoginForm({
                 <Input 
                   id="password" 
                   type="password" 
-                  onChange={e => setPassword(e.target.value)}
                   required
                 />
               </Field>
