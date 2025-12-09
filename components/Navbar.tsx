@@ -13,6 +13,8 @@ export default async function Navbar() {
   // Nếu có sessionID → gọi API để lấy thông tin user
   if (session) {
     try {
+      console.log(session);
+      console.log(" Fetching user info...");
       const res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/me`, {
         method: "GET",
         cache: "no-store",
@@ -61,16 +63,10 @@ export default async function Navbar() {
         </div>
       )}
 
-      {/* Nếu login → hiện avatar */}
+      {/* Nếu login → hiện tên */}
       {user && (
         <div className="flex items-center gap-2">
-          <Image
-            src={user.avatar}
-            alt="avatar"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+          {user.name}
         </div>
       )}
     </div>

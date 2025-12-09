@@ -22,10 +22,8 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [msv, setMSV] = useState('');
-  const [username, setUsername] = useState('emilys');
-  const [password, setPassword] = useState('emilyspass');
-
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,13 +34,13 @@ export function LoginForm({
     setError(null)
 
     try{
-      const res = await fetch('https://dummyjson.com/auth/login',{
+      const res = await fetch('http://localhost:8080/api/auth/login',{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'include', // include cookies from server
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email, password })
       })
-
+      console.log(res)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         setError(data?.message || 'Đăng nhập thất bại')
@@ -73,12 +71,12 @@ export function LoginForm({
           <form onSubmit={submit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="msv">Mã sinh viên</FieldLabel>
+                <FieldLabel htmlFor="email">Mã sinh viên</FieldLabel>
                 <Input
-                  id="msv"
-                  type="msv"
+                  id="email"
+                  type="text"
                   placeholder="A12345"
-                  onChange={e => setMSV(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                   required
                 />
               </Field>
@@ -95,6 +93,7 @@ export function LoginForm({
                 <Input 
                   id="password" 
                   type="password" 
+                  onChange={e => setPassword(e.target.value)}
                   required
                 />
               </Field>
