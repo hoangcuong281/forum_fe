@@ -1,35 +1,44 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Search } from "lucide-react";
-import { cookies } from "next/headers";
+import { useEffect, useState } from "react";
+import LogoutButton from "./LogoutButton";
 
-export default async function Navbar() {
-  const cookieStore = cookies();
-  const session = (await cookieStore).get("sessionId");
+export default function Navbar() {
+  const [user, setUser] = useState<null | { fullName: string }>(null);
 
-  let user: null | { avatar: string; name: string } = null;
-
-  // Nếu có sessionID → gọi API để lấy thông tin user
-  if (session) {
+  const loadUser = async () => {
     try {
-      console.log(session);
-      console.log(" Fetching user info...");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/me`, {
+      const res = await fetch("http://localhost:8080/api/auth/me", {
         method: "GET",
-        cache: "no-store",
-        headers: {
-          cookie: `sessionId=${session.value}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {
-        user = await res.json();
+        const data = await res.json();
+        setUser(data);
+        return;
       }
-    } catch (err) {
-      user = null;
+      setUser(null);
+    } catch {
+      setUser(null);
     }
-  }
+  };
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      loadUser();
+    };
+    window.addEventListener("authChanged", handler);
+    return () => window.removeEventListener("authChanged", handler);
+  }, []);
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-center px-4 md:px-[50px] lg:px-[100px] py-[10px] shadow-sm gap-4 md:gap-0">
@@ -54,7 +63,6 @@ export default async function Navbar() {
         </InputGroup>
       </div>
 
-      {/* Nếu chưa login → hiện Đăng nhập */}
       {!user && (
         <div className="w-full md:w-auto text-center md:text-left">
           <a href="/login" className="inline-block px-4 py-2">
@@ -63,10 +71,10 @@ export default async function Navbar() {
         </div>
       )}
 
-      {/* Nếu login → hiện tên */}
       {user && (
         <div className="flex items-center gap-2">
-          {user.name}
+          <div className="font-bold">{user.fullName}</div>
+          <LogoutButton />
         </div>
       )}
     </div>
