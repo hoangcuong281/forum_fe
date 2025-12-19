@@ -2,24 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Search } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import LogoutButton from "./LogoutButton";
+import { Button } from "./ui/button";
 
 export default function Navbar() {
-  const [user, setUser] = useState<null | { fullName: string }>(null);
-
+  const [user, setUser] = useState<null | { fullName: string; role: string }>(null);
+  const [role, setRole] = useState(null);
   const loadUser = async () => {
     try {
       const res = await fetch("http://localhost:8080/api/auth/me", {
         method: "GET",
         credentials: "include",
       });
-
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+        console.log(data.role);
+        setRole(data.role || "STUDENT");
         return;
       }
       setUser(null);
@@ -54,14 +55,6 @@ export default function Navbar() {
         />
       </Link>
 
-      <div className="w-full md:w-[300px] lg:w-[500px]">
-        <InputGroup>
-          <InputGroupInput placeholder="Câu hỏi của bạn là gì?" />
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-        </InputGroup>
-      </div>
 
       {!user && (
         <div className="w-full md:w-auto text-center md:text-left">
@@ -74,6 +67,7 @@ export default function Navbar() {
       {user && (
         <div className="flex items-center gap-2">
           <div className="font-bold">{user.fullName}</div>
+          {role === "STUDENT" && <Button variant='outline'><Link href="/myQuestion">Câu hỏi của tôi</Link></Button>}
           <LogoutButton />
         </div>
       )}

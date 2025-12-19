@@ -1,178 +1,152 @@
 'use client'
 
-import React from "react";
 import { useEffect, useState } from "react";
 
-export default function User(){
-    type Role = 'sinhvien' | 'cvht'
+type Role = 'ADMIN' | 'ADVISOR' | 'STUDENT' | null;
 
-    type User = {
-        id: string
-        name: string
-        email: string
-        role: Role
-    }
+type User = {
+    userId: string;
+    fullName: string;
+    email: string;
+    role: Role;
+    classId: string | null;
+};
 
-    const [users, setUsers] = useState<User[]>([])
-    const [isOpen, setIsOpen] = useState(false)
-    const [editing, setEditing] = useState<User | null>(null)
-    const [name, setName] = useState('')
-    const [email, setEmail] = useState('')
-    const [role, setRole] = useState<Role>('sinhvien')
+export default function User() {
 
-    useEffect(() => {
-        const raw = localStorage.getItem('users_simple')
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw) as User[]
-                setUsers(parsed)
-            } catch (e) {
-                console.error('Failed to parse users_simple', e)
-            }
-        } else {
-            const seed: User[] = [
-                { id: cryptoRandomId(), name: 'Nguyen Van A', email: 'a@example.com', role: 'sinhvien' },
-                { id: cryptoRandomId(), name: 'Tran Thi B', email: 'b@example.com', role: 'cvht' }
-            ]
-            setUsers(seed)
-            localStorage.setItem('users_simple', JSON.stringify(seed))
-        }
-    }, [])
+    const [users, setUsers] = useState<User[]>([]);
+    const [deleteTarget, setDeleteTarget] = useState<User | null>(null); // user muốn xóa
+    const [showModal, setShowModal] = useState(false);
 
-    useEffect(() => {
-        localStorage.setItem('users_simple', JSON.stringify(users))
-    }, [users])
-
-    function cryptoRandomId() {
+    const fetchUser = async () => {
         try {
-            return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
-        } catch {
-            return Date.now().toString(36)
+            const res = await fetch('http://localhost:8080/api/users', {
+                credentials: "include",
+            });
+            const data: User[] = await res.json();
+            setUsers(data);
+        } catch (err) {
+            console.error(err);
         }
-    }
+    };
 
-    function openCreate(){
-        setEditing(null)
-        setName('')
-        setEmail('')
-        setRole('sinhvien')
-        setIsOpen(true)
-    }
+    useEffect(() => {
+        fetchUser();
+    }, []);
 
-    function openEdit(u: User){
-        setEditing(u)
-        setName(u.name)
-        setEmail(u.email)
-        setRole(u.role)
-        setIsOpen(true)
-    }
+    const onDeleteClick = (user: User) => {
+        setDeleteTarget(user);
+        setShowModal(true);
+    };
 
-    function onSave(){
-        if (!name.trim() || !email.trim()){
-            alert('Vui lòng nhập tên và email')
-            return
+    
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/users/${deleteTarget.userId}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            if (!res.ok) {
+                throw new Error("Xóa người dùng thất bại");
+            }
+
+            setUsers(prev => prev.filter(u => u.userId !== deleteTarget.userId));
+            setDeleteTarget(null);
+            setShowModal(false);
+
+        } catch (err) {
+            console.error(err);
+            alert("Xóa người dùng thất bại, vui lòng thử lại");
         }
+    };
 
-        if (editing){
-            const updated = users.map(u => u.id === editing.id ? { ...u, name: name.trim(), email: email.trim(), role } : u)
-            setUsers(updated)
-            setIsOpen(false)
-            setEditing(null)
-        } else {
-            const newUser: User = { id: cryptoRandomId(), name: name.trim(), email: email.trim(), role }
-            setUsers(prev => [newUser, ...prev])
-            setIsOpen(false)
+    const cancelDelete = () => {
+        setDeleteTarget(null);
+        setShowModal(false);
+    };
+
+    const renderRole = (role: Role) => {
+        switch (role) {
+            case 'ADMIN':
+                return <span className="px-2 py-1 rounded text-sm bg-red-100 text-red-700">Admin</span>;
+            case 'ADVISOR':
+                return <span className="px-2 py-1 rounded text-sm bg-yellow-100 text-yellow-800">CVHT</span>;
+            case 'STUDENT':
+                return <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800">Sinh viên</span>;
+            default:
+                return <span className="px-2 py-1 rounded text-sm bg-gray-100 text-gray-600">Chưa phân quyền</span>;
         }
-    }
-
-    function onDelete(id: string){
-        if (!confirm('Xóa người dùng này?')) return
-        setUsers(prev => prev.filter(u => u.id !== id))
-    }
-
-    function toggleRole(u: User){
-        const newRole: Role = u.role === 'sinhvien' ? 'cvht' : 'sinhvien'
-        setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
-    }
+    };
 
     return (
         <div className="w-8/12 flex justify-center items-center flex-col">
             <h1 className="text-2xl font-bold mb-4">QUẢN LÝ NGƯỜI DÙNG</h1>
-            <div className="p-6 w-full">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <button onClick={openCreate} className="px-3 py-1 rounded bg-blue-600 text-white">Tạo người dùng</button>
-                    </div>
-                </div>
 
+            <div className="p-6 w-full">
                 <div className="bg-white rounded shadow overflow-auto">
                     <table className="min-w-full table-auto">
                         <thead>
                             <tr className="bg-gray-50 text-left">
+                                <th className="px-4 py-2">Mã</th>
                                 <th className="px-4 py-2">Tên</th>
                                 <th className="px-4 py-2">Email</th>
                                 <th className="px-4 py-2">Vai trò</th>
                                 <th className="px-4 py-2">Hành động</th>
                             </tr>
                         </thead>
+
                         <tbody>
                             {users.length === 0 && (
-                                <tr><td colSpan={4} className="p-4">Không có người dùng</td></tr>
-                            )}
-                            {users.map(u => (
-                                <tr key={u.id} className="border-t">
-                                    <td className="px-4 py-2">{u.name}</td>
-                                    <td className="px-4 py-2">{u.email}</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 rounded text-sm ${u.role === 'sinhvien' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                            {u.role === 'sinhvien' ? 'Sinh viên' : 'CVHT'}
-                                        </span>
+                                <tr>
+                                    <td colSpan={5} className="p-4 text-center">
+                                        Không có người dùng
                                     </td>
+                                </tr>
+                            )}
+
+                            {users.map(u => (
+                                <tr key={u.userId} className="border-t">
+                                    <td className="px-4 py-2">{u.userId}</td>
+                                    <td className="px-4 py-2">{u.fullName}</td>
+                                    <td className="px-4 py-2">{u.email}</td>
+                                    <td className="px-4 py-2">{renderRole(u.role)}</td>
                                     <td className="px-4 py-2">
-                                        <div className="flex gap-2">
-                                            <button onClick={() => openEdit(u)} className="px-2 py-1 bg-gray-200 rounded">Sửa</button>
-                                            <button onClick={() => toggleRole(u)} className="px-2 py-1 bg-indigo-200 rounded">Chuyển vai trò</button>
-                                            <button onClick={() => onDelete(u.id)} className="px-2 py-1 bg-red-200 rounded">Xóa</button>
-                                        </div>
+                                        <button
+                                            onClick={() => onDeleteClick(u)}
+                                            className="px-2 py-1 bg-red-200 rounded hover:bg-red-300 cursor-pointer"
+                                        >
+                                            Xóa
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
+
                     </table>
                 </div>
+            </div>
 
-                {isOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                        <div className="bg-white rounded shadow-lg w-11/12 max-w-lg p-6">
-                            <h3 className="text-lg font-medium mb-4">{editing ? 'Chỉnh sửa người dùng' : 'Tạo người dùng'}</h3>
-
-                            <div className="mb-3">
-                                <label className="block text-sm mb-1">Tên</label>
-                                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border px-3 py-2 rounded" />
-                            </div>
-
-                            <div className="mb-3">
-                                <label className="block text-sm mb-1">Email</label>
-                                <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border px-3 py-2 rounded" />
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="block text-sm mb-1">Vai trò</label>
-                                <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="w-full border px-3 py-2 rounded">
-                                    <option value="sinhvien">Sinh viên</option>
-                                    <option value="cvht">CVHT</option>
-                                </select>
-                            </div>
-
+            {/* Modal Xác nhận xóa */}
+            {showModal && deleteTarget && (
+                <>
+                    <div
+                        className="absolute inset-0 bg-black opacity-75"
+                    />
+                    <div className="fixed inset-0 flex items-center justify-center">
+                        <div className="bg-white p-6 rounded shadow w-96">
+                            <h2 className="text-xl font-bold mb-4">Xác nhận xóa</h2>
+                            <p className="mb-4">Bạn có chắc muốn xóa người dùng <strong>{deleteTarget.fullName}</strong> không?</p>
                             <div className="flex justify-end gap-2">
-                                <button onClick={() => { setIsOpen(false); setEditing(null) }} className="px-3 py-1 rounded border">Hủy</button>
-                                <button onClick={onSave} className="px-3 py-1 rounded bg-blue-600 text-white">Lưu</button>
+                                <button onClick={cancelDelete} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer">Hủy</button>
+                                <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer">Xác nhận</button>
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
+                </>
+            )}
         </div>
-    
-    )
+    );
 }

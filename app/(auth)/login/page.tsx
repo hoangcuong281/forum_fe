@@ -18,10 +18,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-export default function Login({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter()
@@ -37,10 +34,9 @@ export default function Login({
       const res = await fetch('http://localhost:8080/api/auth/login',{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        credentials: 'include', // include cookies from server
+        credentials: 'include',
         body: JSON.stringify({ email, password })
       })
-      console.log(res)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         setError(data?.message || 'Đăng nhập thất bại')
@@ -48,11 +44,32 @@ export default function Login({
         return
       }
 
+      try {
+        const checkRole = await fetch('http://localhost:8080/api/auth/me', { method: "GET", credentials: 'include' })
+        if (checkRole.ok) {
+          const user = await checkRole.json().catch(() => null)
+          const role = user?.role ?? user?.roles ?? null
+          const isAdmin = role === 'ADMIN' || (Array.isArray(role) && role.includes('ADMIN'))
+          const isAdvisor = role === 'ADVISOR' || role === 'CVHT' || (Array.isArray(role) && (role.includes('ADVISOR') || role.includes('CVHT')))
+          if (isAdmin) {
+            window.dispatchEvent(new CustomEvent('authChanged'))
+            router.push('/admin')
+            return
+          }
+          if (isAdvisor) {
+            window.dispatchEvent(new CustomEvent('authChanged'))
+            router.push('/advisor')
+            return
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch current user after login', e)
+      }
       setLoading(false)
       try {
         window.dispatchEvent(new CustomEvent('authChanged'))
-      } catch {
-      }
+      } catch {}
+
       router.push('/')
     }catch(error){
       console.error(error)

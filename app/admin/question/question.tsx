@@ -1,181 +1,424 @@
-'use client'
+"use client";
 
-import React from "react";
 import { useEffect, useState } from "react";
-
-import { SearchBar } from "@/components/search-bar"
+import { SearchBar } from "@/components/search-bar";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Question = {
     id: number;
-    title: string;
-    content: string;
-    userID: number;
-    topicID: number;
-    createDate: string;
-    status: string;
-}
+    title?: string;
+    content?: string;
+    userID?: number;
+    topicID?: number;
+    createDate?: string;
+    status?: string;
+};
 
 type Answer = {
     id: number;
-    questionID: number;
-    content: string;
-    userID: number;
-    answerDate: string;
-}
+    questionID?: number;
+    content?: string;
+    userID?: number;
+    answerDate?: string;
+};
 
-const questionList: Question[] = [
-    { id: 1, title: "", content: "Câu hỏi 1", userID: 4158, topicID:1, createDate:"", status: "Answered" },
-    { id: 2, title: "", content: "Câu hỏi 2", userID: 4358, topicID:2, createDate:"", status: "Processing" },
-    { id: 3, title: "", content: "Câu hỏi 3", userID: 4258, topicID:3, createDate:"", status: "New" },
-    { id: 4, title: "", content: "Câu hỏi 4", userID: 4458, topicID:4, createDate:"", status: "Closed" },
-];
+const API_BASE = "http://localhost:8080";
 
-const answerList: Answer[] = [
-    { id: 1, questionID: 1, content: "Câu trả lời 1", userID: 1001, answerDate: "" },
-    { id: 2, questionID: 1, content: "Câu trả lời 2", userID: 1002, answerDate: "" },
-    { id: 3, questionID: 2, content: "Câu trả lời 3", userID: 1001, answerDate: "" },
-];
-
-export default function Question(){
-
+export default function Question() {
     const [questions, setQuestions] = useState<Question[]>([]);
+    const [answersMap, setAnswersMap] = useState<Record<number, Answer[]>>({});
+    const [loadingAnswers, setLoadingAnswers] = useState<Record<number, boolean>>(
+        {}
+    );
+    
+    const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(
+        null
+    );
+
+    const [editingQuestion, setEditingQuestion] = useState<Question | null>(
+        null
+    );
+
+    const [editingAnswer, setEditingAnswer] = useState<Answer | null>(null);
+    const [editingAnswerQuestionId, setEditingAnswerQuestionId] = useState<
+        number | null
+    >(null);
+    const [pendingDelete, setPendingDelete] = useState<{
+        kind: 'question' | 'answer';
+        id: number;
+        questionId?: number;
+    } | null>(null);
+
+    const statusLabel = (s?: string) => {
+        if (!s) return 'TRẠNG THÁI';
+        if (s === 'PROCESSING') return 'Đang xử lý';
+        if (s === 'ANSWERED') return 'Đã trả lời';
+        if (s === 'CLOSED') return 'Đã đóng';
+        return s;
+    };
+
+    const fetchQuestions = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/questions`, {
+                credentials: "include",
+            });
+            const data = await res.json();
+
+            setQuestions(
+                (data || []).map((d: any) => ({
+                    id: d.questionId ?? d.id,
+                    title: d.title,
+                    content: d.content,
+                    userID: d.studentId ?? d.userId,
+                    topicID: d.topicId,
+                    createDate: d.createdDate,
+                    status: d.status,
+                }))
+            );
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSearch = async (keyword: string) => {
+        const q = (keyword || '').trim();
+        if (!q) {
+            await fetchQuestions();
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/questions/search?keyword=${encodeURIComponent(q)}`, { credentials: 'include' });
+            if (!res.ok) {
+                console.warn('search returned', res.status);
+                setQuestions([]);
+                return;
+            }
+            const data = await res.json();
+            setQuestions(
+                (data || []).map((d: any) => ({
+                    id: d.questionId ?? d.id,
+                    title: d.title,
+                    content: d.content,
+                    userID: d.studentId ?? d.userId,
+                    topicID: d.topicId,
+                    createDate: d.createdDate,
+                    status: d.status,
+                }))
+            );
+            setSelectedQuestionId(null);
+            setAnswersMap({});
+        } catch (err) {
+            console.error('search error', err);
+            setQuestions([]);
+        }
+    };
+
+    const fetchAnswers = async (questionId: number) => {
+        if (answersMap[questionId]) return;
+
+        setLoadingAnswers((s) => ({ ...s, [questionId]: true }));
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/answers/question/${questionId}`,
+                { credentials: "include" }
+            );
+            const data = await res.json();
+
+            setAnswersMap((s) => ({
+                ...s,
+                [questionId]: (data || []).map((a: any) => ({
+                    id: a.answerId ?? a.id,
+                    questionID: a.questionId,
+                    content: a.content,
+                    userID: a.userId,
+                    answerDate: a.createdDate,
+                })),
+            }));
+        } catch (err) {
+            console.error(err);
+            setAnswersMap((s) => ({ ...s, [questionId]: [] }));
+        } finally {
+            setLoadingAnswers((s) => ({ ...s, [questionId]: false }));
+        }
+    };
 
     useEffect(() => {
-        setQuestions(questionList);
+        fetchQuestions();
     }, []);
-    const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-    const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
 
     const selectQuestion = (id: number) => {
-        // toggle selection
-        setSelectedQuestionId((prev) => (prev === id ? null : id));
+        setSelectedQuestionId((prev) => {
+            if (prev === id) return null;
+            fetchAnswers(id);
+            return id;
+        });
     };
 
-    const openEditor = (e: React.MouseEvent, q: Question) => {
+    const updateStatus = async (questionId: number, status: string) => {
+        try {
+        await fetch(`http://localhost:8080/api/questions/${questionId}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ status }),
+        });
+        await fetchQuestions();
+        } catch (err) {
+        console.error("updateStatus", err);
+        }
+    };
+
+    const handleDeleteQuestion = (id: number) => {
+        // open confirmation modal
+        setPendingDelete({ kind: 'question', id });
+    };
+
+
+    const openAnswerEditor = (
+        e: React.MouseEvent,
+        answer: Answer,
+        questionId: number
+    ) => {
         e.stopPropagation();
-        setEditingQuestion({ ...q });
+        setEditingAnswer({ ...answer });
+        setEditingAnswerQuestionId(questionId);
     };
 
-    const closeEditor = () => setEditingQuestion(null);
-
-    const handleEditChange = (field: keyof Question, value: string) => {
-        if (!editingQuestion) return;
-        setEditingQuestion({ ...editingQuestion, [field]: value } as Question);
+    const handleAnswerDelete = (
+        e: React.MouseEvent,
+        answerId: number,
+        questionId: number
+    ) => {
+        e.stopPropagation();
+        setPendingDelete({ kind: 'answer', id: answerId, questionId });
     };
 
-    const handleDelete = (id: number) => {
-        setQuestions((prev: Question[]) => prev.filter((p) => p.id !== id));
-        if (selectedQuestionId === id) setSelectedQuestionId(null);
-        closeEditor();
+    const performPendingDelete = async () => {
+        if (!pendingDelete) return;
+        const { kind, id, questionId } = pendingDelete;
+        try {
+            if (kind === 'question') {
+                const res = await fetch(`${API_BASE}/api/questions/${id}`, { method: 'DELETE', credentials: 'include' });
+                if (!res.ok) console.warn('DELETE question returned', res.status);
+                setQuestions((prev) => prev.filter((q) => q.id !== id));
+                setSelectedQuestionId(null);
+                setEditingQuestion(null);
+            } else {
+                const res = await fetch(`${API_BASE}/api/answers/${id}`, { method: 'DELETE', credentials: 'include' });
+                if (!res.ok) console.warn('DELETE answer returned', res.status);
+                if (questionId !== undefined) {
+                    setAnswersMap((prev) => ({ ...prev, [questionId]: prev[questionId]?.filter((a) => a.id !== id) }));
+                }
+            }
+        } catch (err) {
+            console.error('performPendingDelete', err);
+        } finally {
+            setPendingDelete(null);
+        }
     };
 
-    const handleSave = () => {
-        if (!editingQuestion) return;
-        setQuestions((prev: Question[]) => prev.map((p) => (p.id === editingQuestion.id ? editingQuestion : p)));
-        closeEditor();
+    const handleAnswerSave = async () => {
+        if (!editingAnswer || !editingAnswerQuestionId) return;
+
+        try {
+            await fetch(`${API_BASE}/api/answers/${editingAnswer.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ content: editingAnswer.content }),
+            });
+
+            setAnswersMap((prev) => ({
+                ...prev,
+                [editingAnswerQuestionId]: prev[
+                    editingAnswerQuestionId
+                ]?.map((a) =>
+                    a.id === editingAnswer.id ? editingAnswer : a
+                ),
+            }));
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setEditingAnswer(null);
+            setEditingAnswerQuestionId(null);
+        }
     };
-    
-    return(
+
+
+    return (
         <>
-            <div className="w-8/12 flex justify-center items-center">
-                <div className="w-full flex flex-col justify-center items-center">
-                    <h1 className="text-2xl font-bold mb-4">QUẢN LÝ CÂU HỎI / TRẢ LỜI</h1>
-                    <SearchBar />
-                    {/* Bộ lọc câu hỏi: Tìm kiếm, Dropdown menu loại câu hỏi, Lọc theo lớp (Kết hợp giữa dropdown gợi ý và textarea input) */}
-                    <div className="w-full max-w-3xl mt-6">
-                        <h2 className="text-xl font-semibold mb-2">Danh sách câu hỏi</h2>
-                        <ul>
-                            {questions.map((q: Question) => {
-                                const answersForQ = answerList.filter((a) => a.questionID === q.id);
-                                const expanded = q.id === selectedQuestionId;
-                                return (
-                                    <li key={q.id} className="mb-2">
-                                        <div
-                                            className={`p-2 border rounded cursor-pointer flex justify-between items-center ${expanded ? 'bg-gray-100' : 'bg-white'}`}
-                                            onClick={() => selectQuestion(q.id)}
-                                        >
-                                            <div>
-                                                <div className="font-medium">{q.content}</div>
-                                                <div className="text-sm text-gray-500">Status: {q.status}</div>
-                                            </div>
-                                            <div className="ml-4 flex items-center gap-2">
-                                                <button
-                                                    onClick={(e) => openEditor(e, q)}
-                                                    className="text-sm text-blue-600 hover:underline"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <div className="text-sm text-gray-600">{expanded ? '▲' : '▼'}</div>
-                                            </div>
-                                        </div>
+            <div className="w-8/12">
+                <h1 className="text-2xl font-bold mb-4 text-center">
+                    QUẢN LÝ CÂU HỎI / TRẢ LỜI
+                </h1>
 
-                                        {expanded && (
-                                            <div className="mt-2 ml-4 p-3 border-l-2 border-gray-200 bg-gray-50 rounded-r">
-                                                <h4 className="font-medium mb-2">Câu trả lời</h4>
-                                                <ul>
-                                                    {answersForQ.length ? answersForQ.map((a) => (
-                                                        <li key={a.id} className="mb-2 p-2 border rounded bg-white">{a.content}</li>
-                                                    )) : <li className="text-sm text-gray-500">Chưa có câu trả lời</li>}
-                                                </ul>
+                <SearchBar placeholder="Tìm câu hỏi..." onSearch={handleSearch} />
+
+                <div className="space-y-3 mt-6">
+                    {questions.map((q) => {
+                        const expanded = q.id === selectedQuestionId;
+                        const answers = answersMap[q.id] ?? [];
+
+                        return (
+                            <Card
+                                key={q.id}
+                                className="p-4 cursor-pointer"
+                                onClick={() => selectQuestion(q.id)}
+                            >
+                                <div className="flex justify-between">
+                                    <div>
+                                        <div className="font-medium">
+                                            {q.content}
+                                        </div>
+                                        <div className="text-sm text-gray-500">
+                                            Status: {q.status}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={""}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                const s = e.target.value;
+                                                if (s) updateStatus(q.id, s);
+                                            }}
+                                            className="cursor-pointer"
+                                        > 
+                                            <option value="" disabled>{statusLabel(q.status)}</option>
+                                            {['PROCESSING', 'ANSWERED', 'CLOSED']
+                                                .filter((s) => s !== (q.status ?? ''))
+                                                .map((s) => (
+                                                <option key={s} value={s}>{statusLabel(s)}</option>
+                                                ))}
+                                        </select>
+                                        <Button
+                                            variant="destructive"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteQuestion(q.id);
+                                            }}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {expanded && (
+                                    <div className="mt-4 border-t pt-3">
+                                        {loadingAnswers[q.id] ? (
+                                            <div>Đang tải...</div>
+                                        ) : answers.length ? (
+                                            answers.map((a) => (
+                                                <div
+                                                    key={a.id}
+                                                    className="border rounded p-3 mb-2"
+                                                >
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-500">
+                                                            {a.userID} ·{" "}
+                                                            {a.answerDate}
+                                                        </span>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={(e) =>
+                                                                    openAnswerEditor(
+                                                                        e,
+                                                                        a,
+                                                                        q.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={(e) =>
+                                                                    handleAnswerDelete(
+                                                                        e,
+                                                                        a.id,
+                                                                        q.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {a.content}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-gray-500">
+                                                Chưa có câu trả lời
                                             </div>
                                         )}
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
+                                    </div>
+                                )}
+                            </Card>
+                        );
+                    })}
                 </div>
             </div>
 
-            {editingQuestion && (
+            {editingAnswer && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black opacity-40" onClick={closeEditor}></div>
-                    <div className="relative bg-white rounded p-6 w-full max-w-lg z-10">
-                        <h3 className="text-lg font-semibold mb-4">Edit Question #{editingQuestion.id}</h3>
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => setEditingAnswer(null)}
+                    />
+                    <div className="bg-white p-6 rounded z-10 w-full max-w-lg">
+                        <h3 className="font-semibold mb-4">
+                            Edit Answer #{editingAnswer.id}
+                        </h3>
 
-                        <label className="block mb-2">
-                            <div className="text-sm font-medium">Content</div>
-                            <textarea
-                                className="w-full mt-1 p-2 border rounded"
-                                rows={4}
-                                value={editingQuestion.content}
-                                onChange={(e) => handleEditChange('content', e.target.value)}
-                            />
-                        </label>
-
-                        <label className="block mb-2">
-                            <div className="text-sm font-medium">Status</div>
-                            <select
-                                className="w-full mt-1 p-2 border rounded"
-                                value={editingQuestion.status}
-                                onChange={(e) => handleEditChange('status', e.target.value)}
-                            >
-                                <option value="New">New</option>
-                                <option value="Processing">Processing</option>
-                                <option value="Answered">Answered</option>
-                                <option value="Closed">Closed</option>
-                            </select>
-                        </label>
+                        <textarea
+                            className="w-full border p-2 rounded"
+                            rows={5}
+                            value={editingAnswer.content ?? ""}
+                            onChange={(e) =>
+                                setEditingAnswer({
+                                    ...editingAnswer,
+                                    content: e.target.value,
+                                })
+                            }
+                        />
 
                         <div className="flex justify-end gap-2 mt-4">
-                            <button
-                                className="bg-red-500 text-white px-3 py-1 rounded"
-                                onClick={() => handleDelete(editingQuestion.id)}
+                            <Button
+                                variant="ghost"
+                                onClick={() => setEditingAnswer(null)}
                             >
-                                Delete
-                            </button>
-                            <button
-                                className="bg-blue-600 text-white px-3 py-1 rounded"
-                                onClick={handleSave}
-                            >
-                                Done
-                            </button>
-                            <button className="px-3 py-1 rounded border" onClick={closeEditor}>Cancel</button>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleAnswerSave}>Save</Button>
                         </div>
                     </div>
                 </div>
             )}
 
+                {pendingDelete && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40" onClick={() => setPendingDelete(null)} />
+                        <div className="bg-white p-6 rounded z-10 w-full max-w-md">
+                            <h3 className="text-lg font-semibold mb-4">Xác nhận</h3>
+                            <p className="mb-4">{pendingDelete.kind === 'question' ? 'Bạn có chắc muốn xoá câu hỏi này?' : 'Bạn có chắc muốn xoá câu trả lời này?'}</p>
+                            <div className="flex justify-end gap-2">
+                                <Button variant="ghost" onClick={() => setPendingDelete(null)}>Hủy</Button>
+                                <Button variant="destructive" onClick={performPendingDelete}>Xoá</Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
         </>
-    )
+    );
 }
